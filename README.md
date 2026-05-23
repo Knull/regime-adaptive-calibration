@@ -14,11 +14,11 @@ where bₜ⁽ᵖ⁾ is a **safety buffer** learned from recent, regime-weighted 
 
 ## What's Novel
 
-1. **One-sided tail calibration** — not symmetric prediction intervals
-2. **Regime-adaptive weighting** — time-decay × regime-kernel weights
-3. **Finite-sample inflation via weighted empirical-process control** — DKW-style, not heuristic
-4. **Simultaneous multi-level control** — 95% and 99% VaR jointly
-5. **Lightweight post-hoc wrapper** — works with *any* base risk model
+1. **One-sided tail calibration** - not symmetric prediction intervals
+2. **Regime-adaptive weighting** - time-decay × regime-kernel weights
+3. **Finite-sample inflation via weighted empirical-process control** - DKW-style, not heuristic
+4. **Simultaneous multi-level control** - 95% and 99% VaR jointly
+5. **Lightweight post-hoc wrapper** - works with *any* base risk model
 
 ## Project Structure
 
@@ -106,21 +106,21 @@ python experiments/run_ablations.py
 
 ## Evaluation Metrics
 
-- **Unconditional exceedance deviation** — |empirical rate − target|
-- **Kupiec LR test** — unconditional coverage
-- **Christoffersen test** — conditional coverage + independence
-- **Violation clustering** — ratio of consecutive violations
-- **Buffer width** — average conservativeness
-- **Overshoot severity** — E[L − VaR | violation]
-- **Regime-conditional exceedance** — stability across market regimes
+- **Unconditional exceedance deviation** - |empirical rate − target|
+- **Kupiec LR test** - unconditional coverage
+- **Christoffersen test** - conditional coverage + independence
+- **Violation clustering** - ratio of consecutive violations
+- **Buffer width** - average conservativeness
+- **Overshoot severity** - E[L − VaR | violation]
+- **Regime-conditional exceedance** - stability across market regimes
 
 ## Theorem Program
 
 The paper targets three main theoretical results:
 
-1. **Weighted one-sided validity** — P(Lₜ > q̃ₜ⁽ᵖ⁾) ≤ p + ηₜ under weighted exchangeability
-2. **Simultaneous multi-level control** — union-bound across K tail levels
-3. **Drift robustness bound** — calibration error decomposed into empirical-process error, regime mismatch, and base-model error
+1. **Weighted one-sided validity**: P(Lₜ > q̃ₜ⁽ᵖ⁾) ≤ p + ηₜ under weighted exchangeability
+2. **Simultaneous multi-level control**: union-bound across K tail levels
+3. **Drift robustness bound**: calibration error decomposed into empirical-process error, regime mismatch, and base-model error
 
 ## Paper
 
