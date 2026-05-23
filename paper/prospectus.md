@@ -65,13 +65,6 @@ violations by concentrating on noisy recent data.
 - Theorem statements and proof sketches drafted.
 - Paper draft written (working-paper stage).
 
-### What I'm Looking For
-
-Feedback on whether this direction is meaningful, and whether there is a PhD
-student, RA, or MSc researcher in the group who would be a good technical
-sounding board for the theoretical development (particularly the weighted DKW
-analysis and the drift robustness bound).
-
 ---
 
 *Code and results available at: [GitHub repository link]*
