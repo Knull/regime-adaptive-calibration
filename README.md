@@ -129,19 +129,6 @@ The accompanying working paper is in [`paper/preprint.pdf`](paper/preprint.pdf) 
 - [`paper/theory_notes.md`](paper/theory_notes.md) — proof sketches and theoretical scaffolding
 - [`paper/prospectus.md`](paper/prospectus.md) — project prospectus and motivation
 
-## Citation
-
-If you use this code, please cite:
-
-```bibtex
-@unpublished{mahajan2026regime,
-  author = {Mahajan, Arnav},
-  title  = {Regime-Adaptive Distribution-Free Calibration for Financial Tail Risk},
-  year   = {2026},
-  note   = {Working paper}
-}
-```
-
 ## License
 
 MIT — see [`LICENSE`](LICENSE).
