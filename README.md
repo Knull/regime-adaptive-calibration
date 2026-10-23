@@ -68,7 +68,7 @@ python experiments/run_simulations.py
 
 ### 2. Multi-Asset Backtest
 
-Runs full rolling backtests on synthetic assets mimicking SPY, QQQ, IWM, GLD, TLT, BTC-USD.
+Runs full rolling backtests on synthetic assets modelled on SPY, QQQ, IWM, GLD, TLT, BTC-USD. The GARCH and jump parameters for each ticker are hand-set in `src/data.py`; nothing is fitted to market data.
 
 ```bash
 python experiments/run_backtest.py
@@ -82,6 +82,34 @@ Isolates the marginal contribution of each calibration component.
 python experiments/run_ablations.py
 ```
 
+## Reproducing the Results
+
+All experiment settings live in `config.py`: a 500-day training window, a 200-day calibration window, base forecasters refit every 50 days, 2,500 observations per synthetic scenario, 3,500 days per synthetic asset, and the HS and EWMA base forecasters. The first 200 forecast days of each run only build up residual history for the calibration window; every calibrator is then scored on the same remaining days (1,600 per scenario, 2,600 per asset).
+
+- `run_simulations.py` writes `results/simulation_results.csv` (Table 1 of the paper).
+- `run_backtest.py` writes `results/backtest_results.csv` (Table 2). Each asset is seeded from its ticker with CRC32, so reruns give identical paths.
+- `run_ablations.py` writes `results/ablation_full.csv`.
+
+To rebuild the paper, run `node paper/generate_paper.js` from the repository root (it reads the CSVs in `results/`), then convert `paper/preprint.docx` to PDF.
+
+## October 2026 Revision
+
+The first release had four problems that affected its numbers. All are fixed and every result has been regenerated:
+
+1. **No calibrated forecast on the first 200 test days.** The calibration window on those days reached back before the first base forecast, so its residuals were missing. Full (DKW) produced no forecast and the metrics counted those days as non-breaches; Full+Mono silently used the uncalibrated forecast. Evaluation now starts once the calibration window is full, and a missing forecast raises an error instead of being scored.
+2. **Regime features looked ahead.** The rolling features for day t included that day's return, and normalisation used full-sample statistics. Features now use returns up to t−1 and are normalised with statistics from the initial training window.
+3. **Code defaults did not match the paper.** The scripts used 750/250-day windows and other series lengths; they now take the paper's settings from `config.py`.
+4. **Asset backtests were not reproducible.** Seeds came from Python's `hash()`, which is salted per process; they now come from CRC32.
+
+The headline GARCH result (99% VaR, historical simulation) moves from 2.78% → 0.67% breaches to 3.13% → 0.88% (50 and 14 breaches in 1,600 days; Kupiec p = 0.61), measured on the corrected test window.
+
+## Known Limitations
+
+- **The DKW term saturates.** With K = 2, δ = 0.05 and c = 1, ε = √(log(4K/δ)/(2·n_eff)) is at least 0.11 for a 200-day calibration window. That exceeds both tail masses, so the level 1 − p + ε is clamped to 1 and the calibrated forecast is the base forecast plus the largest residual in the window, apart from residuals whose regime weight is so small it vanishes in floating point. The weights act as a filter rather than shaping a quantile, and the 95% forecasts are far more conservative than their level requires.
+- **The base forecasters are stale.** They are trained on a window that ends where the calibration window begins, so on a test day they use data at least 200 days old. This keeps calibration residuals out of sample but handicaps the uncalibrated baselines, EWMA especially, and part of what calibration fixes is that staleness.
+- **Monotonicity pools rather than raises.** When the 95% and 99% forecasts cross, isotonic regression sets both to their average, which lowers the 95% forecast. The envelope in `paper/theory_notes.md` would only raise the 99% forecast, and only that version inherits the one-sided bounds.
+- **Synthetic data only.** No experiment uses real market returns, and the asset profiles use hand-set parameters.
+
 ## Base Forecasters
 
 | Name       | Description |
@@ -91,6 +119,8 @@ python experiments/run_ablations.py
 | GARCH-t    | GARCH(1,1) with Student-t innovations |
 | QR         | Linear quantile regression on regime features |
 | LightGBM   | Gradient-boosted quantile regression |
+
+The reported experiments use HS and EWMA. GARCH-t, QR and LightGBM are implemented but not evaluated in `results/`.
 
 ## Calibration Variants (Ablation)
 
@@ -112,7 +142,7 @@ python experiments/run_ablations.py
 - **Violation clustering** - ratio of consecutive violations
 - **Buffer width** - average conservativeness
 - **Overshoot severity** - E[L − VaR | violation]
-- **Regime-conditional exceedance** - stability across market regimes
+- **Regime-conditional exceedance** - stability across market regimes (implemented, not used in the reported results)
 
 ## Theorem Program
 
