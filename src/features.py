@@ -83,27 +83,39 @@ def compute_regime_features(returns: np.ndarray) -> np.ndarray:
         5  rolling excess kurtosis (60-day)
         6  absolute lagged return
 
+    Row t uses returns up to t−1 only, so the regime vector for day t never
+    includes r_t (the return whose loss is being forecast). The rolling
+    statistics are computed on windows ending at t and then shifted by one day.
+
     Returns shape (n, 7). Leading rows with insufficient history are NaN.
     """
-    feats = np.column_stack([
+    rolling = np.column_stack([
         rolling_volatility(returns, 5),
         rolling_volatility(returns, 20),
         rolling_downside_semivol(returns, 20),
         rolling_drawdown(returns, 60),
         rolling_skewness(returns, 60),
         rolling_kurtosis(returns, 60),
-        abs_lagged_return(returns),
     ])
+    rolling_lagged = np.full_like(rolling, np.nan)
+    rolling_lagged[1:] = rolling[:-1]
+    feats = np.column_stack([rolling_lagged, abs_lagged_return(returns)])
     return feats
 
 
-def normalise_features(Z: np.ndarray, clip: float = 5.0) -> np.ndarray:
+def normalise_features(Z: np.ndarray, clip: float = 5.0,
+                       fit_rows: int | None = None) -> np.ndarray:
     """
     Z-score normalise feature matrix column-wise (ignoring NaNs),
     then clip to [-clip, clip].
+
+    fit_rows: if given, the means and standard deviations come from the first
+    fit_rows rows only (e.g. the initial training window), so later rows are
+    normalised without using future data. None uses the full sample.
     """
-    mu = np.nanmean(Z, axis=0, keepdims=True)
-    sigma = np.nanstd(Z, axis=0, keepdims=True)
+    fit = Z if fit_rows is None else Z[:fit_rows]
+    mu = np.nanmean(fit, axis=0, keepdims=True)
+    sigma = np.nanstd(fit, axis=0, keepdims=True)
     sigma[sigma < 1e-12] = 1.0
     out = (Z - mu) / sigma
     return np.clip(out, -clip, clip)

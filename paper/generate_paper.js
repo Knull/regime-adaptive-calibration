@@ -105,17 +105,17 @@ children.push(new Paragraph({
 children.push(new Paragraph({
   spacing: { after: 100 },
   alignment: AlignmentType.CENTER,
-  children: [new TextRun({ text: "Working Paper \u2014 March 2026", font: FONT, size: 22, italics: true })],
+  children: [new TextRun({ text: "Working Paper, March 2026 (revised October 2026)", font: FONT, size: 22, italics: true })],
 }));
 children.push(new Paragraph({ spacing: { after: 400 }, children: [] }));
 
 // ─── Abstract ────────────────────────────────────────────────────────────────
 children.push(heading(HeadingLevel.HEADING_1, "Abstract"));
 children.push(para(
-  "We propose a model-agnostic calibration layer for one-sided tail-risk forecasts that provides finite-sample coverage guarantees under heavy tails, temporal dependence, and regime shift. Given any base Value-at-Risk (VaR) forecaster, our method computes calibration residuals, weights them by both exponential time-decay and a regime-similarity kernel derived from observable market features, and inflates the resulting weighted quantile by a correction term derived from the Dvoretzky\u2013Kiefer\u2013Wolfowitz (DKW) inequality scaled to the effective sample size. We prove one-sided validity under weighted exchangeability, simultaneous multi-level control across tail levels via a union-bound budget, and a drift-robustness bound decomposing calibration error into weighted empirical-process error, regime mismatch, and base-model estimation error."
+  "We propose a model-agnostic calibration layer for one-sided tail-risk forecasts that provides finite-sample coverage guarantees under heavy tails, temporal dependence, and regime shift. Given any base Value-at-Risk (VaR) forecaster, our method computes calibration residuals, weights them by both exponential time-decay and a regime-similarity kernel derived from observable market features, and inflates the resulting weighted quantile by a correction term derived from the Dvoretzky\u2013Kiefer\u2013Wolfowitz (DKW) inequality scaled to the effective sample size. We give proof sketches for one-sided validity under weighted exchangeability, simultaneous multi-level control across tail levels via a union-bound budget, and a drift-robustness bound decomposing calibration error into weighted empirical-process error, regime mismatch, and base-model estimation error."
 ));
 children.push(para(
-  "Extensive experiments on synthetic data (i.i.d. heavy tails, GARCH, Markov-switching regimes, jump-diffusion) and synthetic assets calibrated to the statistical profiles of SPY, QQQ, IWM, GLD, TLT, and BTC-USD demonstrate that the full calibration layer substantially reduces exceedance-rate deviation relative to uncalibrated forecasters while maintaining low violation clustering and controlled conservativeness. Ablation studies isolate the marginal contribution of time-weighting, regime-weighting, DKW inflation, and monotonicity enforcement."
+  "Experiments on synthetic data (i.i.d. heavy tails, GARCH, Markov-switching regimes, jump-diffusion) and on synthetic assets modelled on SPY, QQQ, IWM, GLD, TLT, and BTC-USD show that at the 99% level the full layer moves every EWMA forecast closer to its target, brings historical simulation within the Kupiec acceptance region on all six asset profiles, and cuts historical-simulation exceedances under GARCH dynamics from 3.13% to 0.88%; where historical simulation is already close to target, calibration moves it away. At the 200-day calibration windows used here the DKW term saturates, so the calibrated forecast is close to the base forecast plus the largest calibration residual, and 95% VaR is far more conservative than required. Ablations show that time-decay weighting on its own is the best-behaved variant across both tail levels, while regime weighting without inflation increases exceedances."
 ));
 
 // ─── 1. Introduction ────────────────────────────────────────────────────────
@@ -194,7 +194,7 @@ children.push(para(
 ));
 children.push(mathBlock("\u03B5_t = c \u00B7 \u221A(log(4K/\u03B4) / (2 \u00B7 n_eff(t)))"));
 children.push(para(
-  "where K is the number of simultaneous tail levels, \u03B4 is the confidence budget, and c is a safety multiplier. This term ensures that even with a small effective calibration set, the coverage guarantee degrades gracefully rather than failing silently."
+  "where K is the number of simultaneous tail levels, \u03B4 is the confidence budget, and c is a safety multiplier. This term ensures that even with a small effective calibration set, the coverage guarantee degrades gracefully rather than failing silently. If \u03B5_t \u2265 p, the level 1 \u2212 p + \u03B5_t exceeds 1 and is clamped to 1, so the buffer becomes the largest calibration residual; Section 7.1 shows that the experiments in this paper operate in that regime."
 ));
 
 children.push(heading(HeadingLevel.HEADING_2, "4.4 Simultaneous Multi-Level Control"));
@@ -204,7 +204,7 @@ children.push(para(
 
 children.push(heading(HeadingLevel.HEADING_2, "4.5 Monotonicity Enforcement"));
 children.push(para(
-  "When forecasting at both 95% and 99% VaR, the calibrated forecasts may cross (quantile crossing). We enforce monotonicity via isotonic regression: if \u0071\u0303_99 < \u0071\u0303_95, the values are pooled and adjusted so that more extreme tail levels always produce larger VaR forecasts. This rearrangement does not worsen exceedance control."
+  "When forecasting at both 95% and 99% VaR, the calibrated forecasts may cross (quantile crossing). We enforce monotonicity via isotonic regression: if \u0071\u0303_99 < \u0071\u0303_95, the two values are pooled to their average, so that more extreme tail levels always produce larger VaR forecasts. Pooling raises the 99% forecast but lowers the 95% one, so it can worsen exceedance control at the less extreme level; an upper envelope that only raises the 99% forecast to the 95% one would preserve the one-sided bounds at both levels."
 ));
 
 // ─── 5. Theory ───────────────────────────────────────────────────────────────
@@ -244,12 +244,12 @@ children.push(heading(HeadingLevel.HEADING_1, "6. Experiments"));
 
 children.push(heading(HeadingLevel.HEADING_2, "6.1 Synthetic Simulation Suite"));
 children.push(para(
-  "We evaluate the calibration layer under four controlled data-generating processes (DGPs), each targeting a specific challenge. Simulation A uses i.i.d. heavy-tailed innovations (Student-t with 4 degrees of freedom, and skewed-t) as a sanity check. Simulation B uses GARCH(1,1) with Student-t innovations to introduce volatility clustering. Simulation C uses a two-state Markov-switching model (calm vs. crisis regimes) with different volatility and tail thickness in each state. Simulation D uses a Merton-style jump-diffusion process with stochastic crash arrivals. For each scenario, we generate 2,500 observations, use a 500-day training window, a 200-day calibration window, and evaluate on the remaining test period."
+  "We evaluate the calibration layer under four controlled data-generating processes (DGPs), each targeting a specific challenge. Simulation A uses i.i.d. heavy-tailed innovations (Student-t with 4 degrees of freedom, and skewed-t) as a sanity check. Simulation B uses GARCH(1,1) with Student-t innovations to introduce volatility clustering. Simulation C uses a two-state Markov-switching model (calm vs. crisis regimes) with different volatility and tail thickness in each state. Simulation D uses a Merton-style jump-diffusion process with stochastic crash arrivals. For each scenario, we generate 2,500 observations and use a 500-day training window and a 200-day calibration window. Because the calibration window on each test day must be filled with residuals of forecasts made on those days, the first 200 forecast days only build up residual history; every calibrator, including the uncalibrated baseline, is then scored on the same final 1,600 days."
 ));
 
 children.push(heading(HeadingLevel.HEADING_2, "6.2 Base Forecasters"));
 children.push(para(
-  "We employ two representative base forecasters: Historical Simulation (HS), which uses the empirical quantile of trailing losses, and Exponentially Weighted Moving Average Normal VaR (EWMA), which applies a RiskMetrics-style volatility model with a Normal quantile. Both are retrained every 50 days on the rolling training window."
+  "We employ two representative base forecasters: Historical Simulation (HS), which uses the empirical quantile of trailing losses, and Exponentially Weighted Moving Average Normal VaR (EWMA), which applies a RiskMetrics-style volatility model with a Normal quantile. Both are retrained every 50 days on the rolling training window. The training window ends where the 200-day calibration window begins, so the base forecast used on a test day is built from data that ends at least 200 days earlier. This keeps the calibration residuals out of sample, but it leaves the uncalibrated baselines stale, which matters most for EWMA."
 ));
 
 children.push(heading(HeadingLevel.HEADING_2, "6.3 Calibration Variants"));
@@ -272,7 +272,7 @@ if (p99SimRows.length > 0) {
       headerCell("Scenario", colWidths[0]), headerCell("Forecaster", colWidths[1]),
       headerCell("Calibrator", colWidths[2]), headerCell("Exc. Rate", colWidths[3]),
       headerCell("Deviation", colWidths[4]), headerCell("Kupiec p", colWidths[5]),
-      headerCell("Clustering", colWidths[6]),
+      headerCell("Christoff. p", colWidths[6]),
     ]}),
   ];
   // Show a subset of interesting rows
@@ -285,7 +285,7 @@ if (p99SimRows.length > 0) {
       cell(parseFloat(r[4]).toFixed(4), colWidths[3]),
       cell(parseFloat(r[5]).toFixed(4), colWidths[4]),
       cell(parseFloat(r[7]).toFixed(3), colWidths[5]),
-      cell(parseFloat(r[9]).toFixed(4), colWidths[6]),
+      cell(parseFloat(r[9]).toFixed(3), colWidths[6]),
     ]}));
   }
   if (tableRows.length > 1) {
@@ -299,13 +299,13 @@ if (p99SimRows.length > 0) {
 }
 
 children.push(para(
-  "The Full DKW calibration layer consistently achieves exceedance rates near or below the 1% target across all DGPs. In the GARCH scenario (B), uncalibrated HS produces a 2.78% exceedance rate, substantially above the 1% target, while Full DKW reduces this to 0.67% with a Kupiec p-value of 0.130 (not rejected). In the Markov-switching scenario (C), the improvement is equally pronounced: uncalibrated HS has 0.83% exceedance, while Full DKW achieves 0.72%. The DKW inflation term is particularly valuable in the jump-diffusion scenario (D), where extreme tail events stress all methods."
+  "With the inflation term, the 99% exceedance rates of the two full variants stay between 0.75% and 1.50% for historical simulation (HS) across the five DGPs. HS improves only in the GARCH scenario (B), where the uncalibrated forecaster breaches 3.13% of the time and Full DKW brings this to 0.88% (Kupiec p = 0.608, not rejected). In the other four scenarios uncalibrated HS is already within two breaches of the 16 that a 1% rate implies over 1,600 days, and calibration leaves it 0.06 to 0.50 pp from the target, further than before (in the Markov-switching scenario, from 0.88% to 1.25%). For EWMA, whose uncalibrated rates are higher (1.56% to 4.63%), both full variants move every scenario closer to 1% (0.81% to 1.38%). At the 95% level the full variants record 0.75% to 1.38% exceedances against a 5% target and are rejected by the Kupiec test in every scenario. Plain conformal calibration sits between the two for HS at 99% (1.00% to 2.69%), and time and regime weighting without inflation is worst (4.81% to 8.50%). Table 1 shows HS only; all variants and both forecasters are in results/simulation_results.csv."
 ));
 
 // ─── 6.5 Asset Backtests ────────────────────────────────────────────────────
 children.push(heading(HeadingLevel.HEADING_2, "6.5 Multi-Asset Backtest Results"));
 children.push(para(
-  "Table 2 reports 99% VaR backtest results on synthetic assets calibrated to the statistical profiles of six major instruments. Each asset is simulated for 3,500 days (~14 years) using GARCH dynamics with jump-diffusion contamination."
+  "Table 2 reports 99% VaR backtest results on synthetic assets modelled on six major instruments. Each asset is simulated for 3,500 days (~14 years) using GARCH dynamics with jump-diffusion contamination; the GARCH and jump parameters are set by hand for each ticker rather than fitted to market data. With the same windows and warm-up as Section 6.1, each asset is scored on its final 2,600 days."
 ));
 
 const p99BtRows = btRows.filter(r => parseFloat(r[3]) === 0.01);
@@ -328,7 +328,7 @@ if (p99BtRows.length > 0) {
       cell(parseFloat(r[4]).toFixed(4), btColWidths[3]),
       cell(parseFloat(r[5]).toFixed(4), btColWidths[4]),
       cell(parseFloat(r[7]).toFixed(3), btColWidths[5]),
-      cell(parseFloat(r[10]).toFixed(6), btColWidths[6]),
+      cell(parseFloat(r[11]).toFixed(6), btColWidths[6]),
     ]}));
   }
   if (btTableRows.length > 1) {
@@ -342,13 +342,13 @@ if (p99BtRows.length > 0) {
 }
 
 children.push(para(
-  "The Full+Mono calibration reduces exceedance rates substantially across all assets. For the SPY-profile asset, uncalibrated HS produces a 1.71% violation rate versus 0.50% for Full+Mono. For the more volatile BTC-profile asset, the improvement is from 1.18% to 0.50%. Notably, Full+Mono achieves non-rejection by the Kupiec test (p > 0.05) on most assets, whereas uncalibrated HS is frequently rejected."
+  "Uncalibrated HS breaches 1.35% to 1.88% of the time on the six synthetic assets and passes the Kupiec test only on the IWM profile. Full+Mono brings every asset closer to the 1% target (0.69% to 1.15%) and passes the Kupiec test on all six: for the SPY profile the rate moves from 1.65% to 0.92%, and for the BTC profile from 1.62% to 1.15%. EWMA starts further away (2.69% to 4.19%) and ends at 0.50% to 1.12%, passing on five of six assets. As in the simulations, the 95% forecasts are over-corrected: the full variants record 0.54% to 1.23% exceedances against a 5% target on every asset."
 ));
 
 // ─── 6.6 Ablation ───────────────────────────────────────────────────────────
 children.push(heading(HeadingLevel.HEADING_2, "6.6 Ablation Analysis"));
 children.push(para(
-  "The ablation study reveals that each component contributes meaningfully. Time-weighting alone does not improve coverage and can increase exceedance rates by overweighting recent (potentially crisis) observations in the residual distribution. Regime-weighting exhibits the same pattern. However, when combined with DKW inflation, the time and regime weights become beneficial: they concentrate the effective calibration set on regime-relevant observations while the inflation term compensates for the reduced effective sample size. Monotonicity enforcement further improves joint coverage at the 95% and 99% levels without measurably increasing conservativeness."
+  "The ablation (results/ablation_full.csv) runs all seven calibrator variants on the GARCH and Markov-switching scenarios and the SPY and BTC asset profiles, with both base forecasters. Time-decay weighting on its own is the best-behaved variant across both tail levels: compared with plain conformal calibration it moves all eight cases closer to target at both tail levels, and it passes the Kupiec test at 95% in all eight (four of eight at 99%). Regime weighting on its own, and time and regime weighting together without inflation, raise 99% exceedances to between 4.75% and 7.92%. Adding DKW inflation brings the full variants to 0.58% to 1.38% at 99%, with Full DKW passing the Kupiec test in seven of eight cases, but at the cost of the saturation described in Section 7.1: every full variant is rejected at 95%. Monotonicity enforcement changes exceedance rates by at most 0.125 pp in these runs."
 ));
 
 // ─── 7. Discussion ───────────────────────────────────────────────────────────
@@ -358,21 +358,24 @@ children.push(heading(HeadingLevel.HEADING_2, "7.1 Conservativeness vs. Responsi
 children.push(para(
   "The DKW inflation term introduces deliberate conservativeness: calibrated forecasts will, on average, exceed the minimum necessary VaR. This conservativeness is largest when the effective sample size is small (during novel regimes or rapid transitions) and shrinks as more relevant calibration data accumulates. The degree of conservativeness is controlled by the constant c and the confidence budget \u03B4, offering practitioners a direct tradeoff between safety and capital efficiency."
 ));
+children.push(para(
+  "In the experiments reported here, however, the conservativeness is not a tunable margin but a hard ceiling. With K = 2, \u03B4 = 0.05 and c = 1, \u03B5_t stays above 0.05 until n_eff exceeds about 1,000 and above 0.01 until it exceeds about 25,000, while a 200-day calibration window gives n_eff \u2264 200 and therefore \u03B5_t \u2265 0.11. The inflated level 1 \u2212 p + \u03B5_t is clamped to 1 at both tail levels, and the calibrated forecast is the base forecast plus the largest residual in the window. More precisely, it is the largest residual whose weight does not vanish in floating point: residuals from very dissimilar regimes receive regime-kernel weights so small that they drop out. The weights therefore act as a filter on which residuals count rather than shaping a quantile, and the 95% forecasts end up far more conservative than their level requires (Tables 1 and 2 report only 99% VaR; the 95% results are in the repository CSVs)."
+));
 
 children.push(heading(HeadingLevel.HEADING_2, "7.2 Effective Sample Size"));
 children.push(para(
-  "The effective sample size n_eff serves as an automatic diagnostic: when it is low, the method signals that the current regime has few historical precedents and widens the safety buffer accordingly. This is precisely the behaviour desired in risk management: greater uncertainty should produce more conservative estimates, not less."
+  "The effective sample size n_eff serves as an automatic diagnostic: when it is low, the method signals that the current regime has few historical precedents and widens the safety buffer accordingly. This is precisely the behaviour desired in risk management: greater uncertainty should produce more conservative estimates, not less. In the current configuration this adaptivity is inactive, because ε_t saturates for every effective sample size the experiments produce (Section 7.1)."
 ));
 
 children.push(heading(HeadingLevel.HEADING_2, "7.3 Limitations"));
 children.push(para(
-  "The current framework has several limitations. First, the regime features are hand-crafted from return statistics; a learned feature representation might capture subtler regime structure. Second, the bandwidth parameters \u03BB and \u03B3 are set as constants rather than adapted online. Third, the theoretical guarantees rely on weighted exchangeability, which is an approximation to the true dependence structure of financial time series. Fourth, the present experiments use synthetic data; validation on historical market data with known crisis episodes would strengthen the empirical case."
+  "The current framework has several limitations. First, as Section 7.1 shows, the DKW term saturates at the window sizes used here, so the reported results reflect a largest-residual buffer rather than a calibrated quantile; a non-saturating inflation (a smaller c, a tighter bound such as Berk\u2013Jones, or larger effective samples) is needed before the weighting scheme can be judged on its own terms. Second, the base forecasters are trained on windows that end where the calibration window begins, so they are at least 200 days stale at forecast time; part of the improvement over the uncalibrated baselines is the calibration layer correcting that staleness rather than model misspecification. Third, the regime features are hand-crafted from return statistics; a learned feature representation might capture subtler regime structure. Fourth, the bandwidth parameters \u03BB and \u03B3 are set as constants rather than adapted online. Fifth, the theoretical guarantees rely on weighted exchangeability, which is an approximation to the true dependence structure of financial time series. Sixth, the present experiments use synthetic data with hand-set parameters; validation on historical market data with known crisis episodes would strengthen the empirical case."
 ));
 
 // ─── 8. Conclusion ───────────────────────────────────────────────────────────
 children.push(heading(HeadingLevel.HEADING_1, "8. Conclusion"));
 children.push(para(
-  "We have presented a regime-adaptive, distribution-free calibration layer for financial tail-risk forecasts. The method wraps any base VaR forecaster as a lightweight post-hoc correction, using weighted conformal calibration with DKW-style finite-sample inflation. Our theoretical results establish one-sided validity, simultaneous multi-level control, and drift robustness. Extensive experiments demonstrate that the method substantially improves calibration across diverse data-generating processes and asset profiles, with the largest improvements occurring precisely during regime transitions and crisis periods where traditional methods fail."
+  "We have presented a regime-adaptive, distribution-free calibration layer for financial tail-risk forecasts. The method wraps any base VaR forecaster as a lightweight post-hoc correction, using weighted conformal calibration with DKW-style finite-sample inflation. Our proof sketches cover one-sided validity, simultaneous multi-level control, and drift robustness. In synthetic experiments the layer corrects stale base forecasts at the 99% level, most clearly for EWMA, for historical simulation under GARCH dynamics, and on the synthetic asset profiles. At the window sizes used here, however, the DKW term saturates, so the layer behaves like a largest-residual buffer and is far too conservative at 95%. A non-saturating inflation term, base forecasters refit on current data, and validation on historical returns are the next steps."
 ));
 children.push(para(
   "Future work will extend the framework to Expected Shortfall (CVaR) calibration, develop adaptive bandwidth selection for the time-decay and regime-kernel parameters, and validate on historical market data spanning multiple crisis episodes."
@@ -402,7 +405,7 @@ for (const ref of refs) {
 children.push(new Paragraph({ children: [new PageBreak()] }));
 children.push(heading(HeadingLevel.HEADING_1, "Appendix A: Implementation Details"));
 children.push(para(
-  "All experiments are implemented in Python 3.11+ using NumPy, SciPy, pandas, scikit-learn, statsmodels, arch, and LightGBM. The backtesting engine uses a rolling walk-forward design with configurable training, calibration, and test windows. Base forecasters are retrained every 50 trading days to balance computational cost against adaptation speed. Regime features are computed from returns alone and normalised with z-scoring and clipping at \u00B15 standard deviations. The calibration layer is parameter-free at deployment time given fixed choices of \u03BB, \u03B3, c, and \u03B4; we use \u03BB = 0.01, \u03B3 = 1.0, c = 1.0, and \u03B4 = 0.05 throughout. The complete codebase, including all experiment scripts and this paper\u2019s generation code, is available in the project repository."
+  "All experiments are implemented in Python 3.11+ using NumPy, SciPy, pandas, scikit-learn, statsmodels, arch, and LightGBM. The backtesting engine uses a rolling walk-forward design with configurable training, calibration, and test windows. Base forecasters are retrained every 50 trading days to balance computational cost against adaptation speed. Regime features are computed from returns alone, using only returns up to the day before the forecast date, and normalised with z-scoring (means and standard deviations from the initial training window) and clipping at \u00B15 standard deviations. Synthetic assets are seeded from their tickers with CRC32, so every table can be regenerated exactly from the repository. The calibration layer is parameter-free at deployment time given fixed choices of \u03BB, \u03B3, c, and \u03B4; we use \u03BB = 0.01, \u03B3 = 1.0, c = 1.0, and \u03B4 = 0.05 throughout. The complete codebase, including all experiment scripts and this paper\u2019s generation code, is available in the project repository."
 ));
 
 // ─── Appendix B: Proof Sketches ─────────────────────────────────────────────
@@ -418,6 +421,12 @@ children.push(para(
 children.push(heading(HeadingLevel.HEADING_2, "B.3 Proof Sketch for Theorem 3"));
 children.push(para(
   "Decompose the calibration error into three terms via the triangle inequality. The first term is the weighted empirical-process error (bounded by Theorem 1). The second is the regime-mismatch term: if the true conditional distribution at time t differs from the calibration-set mixture by at most \u03B5_regime (measured by the weighted average distance C\u03A3 w_i \u03C1(z_i, z_t)), then the true quantile is perturbed by at most \u03B5_regime under standard quantile-sensitivity results. The third is the base-model error, which passes through the calibration layer as additive bias."
+));
+
+// ─── Appendix C: Revision Notes ─────────────────────────────────────────────
+children.push(heading(HeadingLevel.HEADING_1, "Appendix C: Revision Notes (October 2026)"));
+children.push(para(
+  "The first version of this paper (March 2026) reported results affected by three problems in the experiment code, all fixed in this revision. First, on the first 200 test days the calibration window reached back before the first base forecast, so no calibrated forecast existed: the Full DKW variant's missing forecasts were scored as non-breaches, and Full+Mono silently used the uncalibrated forecast. Evaluation now begins once the calibration window is full, and every calibrator is scored on the same days. Second, the rolling regime features for day t included that day's return and were normalised over the full sample; they now use returns up to t−1 and statistics from the initial training window. Third, the synthetic asset paths were seeded non-reproducibly; they are now seeded from their tickers. In addition, the last column of Table 1 was labelled Clustering but showed the Christoffersen p-value, and the last column of Table 2 was labelled Overshoot but showed the clustering metric. All tables and figures were regenerated. The headline GARCH result changes from 2.78% to 0.67% exceedances in the first version to 3.13% to 0.88% here."
 ));
 
 // ─── Build ───────────────────────────────────────────────────────────────────

@@ -14,17 +14,18 @@ import csv
 from src.data import sim_garch_t, sim_markov_switching, generate_synthetic_asset
 from src.backtest import run_full_experiment
 from src.utils import metrics_to_table
-from config import RESULTS_DIR, FIGURES_DIR, TAIL_LEVELS
+from config import (RESULTS_DIR, FIGURES_DIR, TAIL_LEVELS, TRAIN_WINDOW,
+                    CALIBRATION_WINDOW, RETRAIN_FREQ, N_SIM_OBS, N_ASSET_DAYS,
+                    FORECASTERS)
 
 
+# Same series as the main experiments, so the ablation is directly comparable.
 SCENARIOS = {
-    "GARCH-t": lambda: sim_garch_t(3000, seed=45),
-    "Markov-Switch": lambda: sim_markov_switching(3000, seed=46)[0],
-    "SPY-Synth": lambda: generate_synthetic_asset("SPY", n=4000, seed=100)["returns"],
-    "BTC-Synth": lambda: generate_synthetic_asset("BTC-USD", n=4000, seed=200)["returns"],
+    "GARCH-t": lambda: sim_garch_t(N_SIM_OBS, seed=45),
+    "Markov-Switch": lambda: sim_markov_switching(N_SIM_OBS, seed=46)[0],
+    "SPY-Synth": lambda: generate_synthetic_asset("SPY", n=N_ASSET_DAYS, seed=100)["returns"],
+    "BTC-Synth": lambda: generate_synthetic_asset("BTC-USD", n=N_ASSET_DAYS, seed=200)["returns"],
 }
-
-FORECASTERS = ["HS", "EWMA"]
 
 
 def main():
@@ -41,8 +42,9 @@ def main():
             asset_name=sc_name,
             forecaster_names=FORECASTERS,
             tail_levels=TAIL_LEVELS,
-            train_window=750,
-            cal_window=250,
+            train_window=TRAIN_WINDOW,
+            cal_window=CALIBRATION_WINDOW,
+            retrain_freq=RETRAIN_FREQ,
             verbose=True,
         )
 

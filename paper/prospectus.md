@@ -43,9 +43,11 @@ where $\varepsilon_t$ depends on $n_{\text{eff}}$ and the confidence budget $\de
 
 ### Preliminary Results
 
-Across synthetic scenarios, the full calibration layer reduces 99% VaR exceedance-rate deviation by 50 to 90 percent relative to uncalibrated HS and EWMA baselines. In the GARCH scenario, uncalibrated HS violates at 2.78% (target: 1%); calibrated: 0.67%. In Markov-switching: uncalibrated 0.83%, calibrated 0.72%.
+*(Updated October 2026 after fixing a scoring bug and a feature look-ahead; see the README.)*
 
-The DKW inflation term matters more than the weighting scheme. Without it, time-plus-regime weighting actually increases violations by concentrating on noisy recent data.
+For EWMA, the full calibration layer (with monotonicity) cuts the 99% VaR exceedance-rate deviation by 50 to 93 percent in all five synthetic scenarios. For historical simulation (HS) the picture is mixed. In the GARCH scenario, uncalibrated HS violates at 3.13% (target: 1%) and the full layer brings it to 0.88%. That is the only synthetic scenario where HS improves: in the other four, uncalibrated HS is already within two breaches of the target over 1,600 days, and calibration moves it further away (Markov-switching: 0.88% to 1.25%). On the six synthetic asset profiles, where uncalibrated HS breaches 1.35% to 1.88% of the time, the full layer brings all six within the Kupiec acceptance region.
+
+The DKW inflation term matters more than the weighting scheme. Without it, time-plus-regime weighting actually increases violations. With it, the weights mostly stop mattering: at 200-day calibration windows the inflation term exceeds both tail masses, the inflated quantile level is clamped to 1, and the calibrated forecast is the base forecast plus the largest residual in the window (apart from residuals whose regime weight underflows to zero). That also makes 95% VaR far too conservative: under 1.5% exceedances against a 5% target in every synthetic scenario and asset profile. Time-decay weighting on its own, without inflation, turned out to be the best-behaved variant across both tail levels in the ablation.
 
 ### Current Status
 
@@ -59,7 +61,7 @@ The DKW inflation term matters more than the weighting scheme. Without it, time-
 Building this from scratch worked through several areas I had only read about before:
 
 - **Conformal prediction beyond the symmetric case.** Most introductions present two-sided intervals. Adapting the construction to one-sided tail forecasts required rewriting the validity argument and rethinking what the calibration residual should be.
-- **GARCH-t implementation.** I had used GARCH as a black box before. Implementing the QMLE fit, handling the degrees-of-freedom parameter, and getting the conditional variance recursion right surfaced edge cases I had not considered, especially around initialization and burn-in.
+- **GARCH-t implementation.** I had used GARCH as a black box before. Writing the GARCH-t simulator myself (the conditional variance recursion, the unit-variance scaling of the t innovations, initialising at the unconditional variance) surfaced edge cases I had not considered. The GARCH-t forecaster itself is fitted by QMLE through the `arch` package rather than my own optimiser.
 - **Weighted empirical processes.** The DKW inflation derivation required understanding how the effective sample size $n_{\text{eff}} = (\sum w_i)^2 / \sum w_i^2$ changes the concentration bound. This was the most mathematically demanding part of the project.
 - **Backtesting discipline.** Walk-forward evaluation, train/calibration/test splits, and avoiding look-ahead leakage in feature construction were harder to get right than the modeling itself. Most of my early bugs were data-handling, not algorithmic.
 - **VaR evaluation methodology.** Kupiec tests unconditional coverage. Christoffersen tests independence of violations. The two can disagree, and a model can pass one and fail the other in ways that matter for actual risk management.
@@ -70,7 +72,9 @@ A few things I would do differently or want to come back to:
 
 - **The synthetic asset backtest is not a real backtest.** I generated returns calibrated to the statistical profiles of SPY, QQQ, and so on, not the actual return series. This was a deliberate choice to avoid data licensing issues, but it limits the claims I can make. A genuine out-of-sample test on real returns is the natural next step.
 - **The regime features are hand-engineered.** Rolling volatility, skew, kurtosis, and drawdown are reasonable choices, but I did not test alternatives systematically. A learned regime representation, possibly from a small autoencoder or a hidden Markov model, could be a meaningful improvement.
-- **The DKW bound is conservative.** It is finite-sample valid but loose. Tighter alternatives exist (Berk-Jones, weighted bootstrap) that I did not implement. The trade-off between sharpness and finite-sample guarantees is a real research direction.
+- **The DKW bound is conservative.** It is finite-sample valid but loose, and at the window sizes I used it saturates outright: with K = 2, δ = 0.05 and c = 1, ε stays above 0.05 until the effective sample size passes about 1,000, and above 0.01 until it passes about 25,000. Tighter alternatives exist (Berk-Jones, weighted bootstrap) that I did not implement. The trade-off between sharpness and finite-sample guarantees is a real research direction.
+- **The base forecasters are stale.** Each base forecaster is trained on a window that ends where the 200-day calibration window begins, so on any test day it is working from data at least 200 days old. That keeps the calibration residuals out of sample, but it handicaps the uncalibrated baselines (EWMA most of all), and part of what the calibration layer "fixes" is that staleness.
+- **The regime features leaked, and the first test days were mis-scored.** In the first version the rolling features for day t included that day's return and were z-scored over the full sample, and the first 200 test days had no calibrated forecast at all (they were counted as non-breaches or fell back to the uncalibrated forecast). Both were fixed in October 2026; the results above come from the corrected code.
 - **Multi-level control via union bound is wasteful.** Splitting the confidence budget across 95% and 99% VaR levels via union bound is the simple choice but throws away dependence structure between the two estimates. A joint construction would be tighter.
 - **No unit tests.** I checked outputs against known reference values during development, but a proper test suite would make the project more credible and easier to extend. Adding tests is on my list.
 
@@ -78,4 +82,4 @@ What I take away from this project: distribution-free guarantees are achievable 
 
 ---
 
-*Code and results available at: [GitHub repository link]*
+*Code and results available at: https://github.com/Knull/regime-adaptive-calibration*

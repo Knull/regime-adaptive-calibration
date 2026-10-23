@@ -113,6 +113,35 @@ def metrics_to_table(results: dict, tail_level: float) -> str:
     return "\n".join(lines)
 
 
+def save_combined_metrics_csv(all_results: dict, key_name: str,
+                              tail_levels: list[float], path: str):
+    """
+    Save metrics for several experiments to one CSV, with the experiment
+    name (scenario or asset) in the first column.
+
+    all_results: {experiment_name: {forecaster: {calibrator: backtest_result}}}
+    """
+    import csv
+    rows = []
+    for exp_name, results in all_results.items():
+        for fc_name, cal_dict in results.items():
+            for cal_name, bt in cal_dict.items():
+                if bt is None:
+                    continue
+                for p in tail_levels:
+                    row = {key_name: exp_name, "forecaster": fc_name,
+                           "calibrator": cal_name, "tail_level": p}
+                    row.update(bt["metrics"].get(p, {}))
+                    rows.append(row)
+    if not rows:
+        return
+    os.makedirs(os.path.dirname(path) or ".", exist_ok=True)
+    with open(path, "w", newline="") as f:
+        writer = csv.DictWriter(f, fieldnames=rows[0].keys())
+        writer.writeheader()
+        writer.writerows(rows)
+
+
 def save_metrics_csv(results: dict, tail_levels: list[float], path: str):
     """Save all metrics to a CSV file."""
     import csv

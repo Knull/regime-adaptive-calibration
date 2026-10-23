@@ -9,6 +9,7 @@ Orchestrates:
 """
 
 from __future__ import annotations
+import warnings
 import numpy as np
 from typing import Optional
 from tqdm import tqdm
@@ -24,9 +25,9 @@ def run_single_backtest(
     forecaster_name: str,
     calibrator: Optional[RegimeAdaptiveCalibrator],
     tail_levels: list[float],
-    train_window: int = 750,
-    cal_window: int = 250,
-    retrain_freq: int = 20,
+    train_window: int = 500,
+    cal_window: int = 200,
+    retrain_freq: int = 50,
     verbose: bool = False,
 ) -> dict:
     """
@@ -55,12 +56,21 @@ def run_single_backtest(
     losses = -returns  # L_t = -r_t
     n = len(returns)
     features = compute_regime_features(returns)
-    features_norm = normalise_features(features)
+    # Normalise with statistics from the initial training window only, so the
+    # features used on later days carry no information from the future.
+    features_norm = normalise_features(features, fit_rows=train_window)
 
-    start_test = train_window + cal_window
+    # Base forecasts start once a full training window exists. Calibration on
+    # day t needs residuals for every day in [t - cal_window, t), and those need
+    # base forecasts made on those days, so the first cal_window forecast days
+    # only build up residual history. Evaluation starts after that, and every
+    # calibrator (including Uncalibrated) is scored on the same days.
+    start_forecast = train_window + cal_window
+    start_test = start_forecast + cal_window
     if start_test >= n:
         raise ValueError("Series too short for the given windows.")
 
+    forecast_range = range(start_forecast, n)
     test_range = range(start_test, n)
     T_test = len(test_range)
 
@@ -70,15 +80,17 @@ def run_single_backtest(
     base_forecasts_test = {p: np.zeros(T_test) for p in tail_levels}
     test_losses = np.zeros(T_test)
     test_idx = np.array(list(test_range))
+    n_fallback = 0
 
     # Pre-fit base forecaster across the series using rolling windows
     last_trained = -retrain_freq  # force initial train
     forecaster = get_forecaster(forecaster_name)
 
-    iterator = tqdm(enumerate(test_range), total=T_test,
+    iterator = tqdm(forecast_range, total=len(forecast_range),
                     desc=f"{forecaster_name}", disable=not verbose)
 
-    for j, t in iterator:
+    for t in iterator:
+        j = t - start_test  # index into the test arrays (negative during warm-up)
         # ── Re-train base forecaster periodically ──
         if t - last_trained >= retrain_freq:
             train_end = t - cal_window
@@ -115,7 +127,11 @@ def run_single_backtest(
             except Exception:
                 base_var = float(np.quantile(losses[max(0, t - train_window):t], 1 - p))
             base_forecasts_all[p][t] = base_var
-            base_forecasts_test[p][j] = base_var
+            if j >= 0:
+                base_forecasts_test[p][j] = base_var
+
+        if j < 0:
+            continue  # warm-up: building residual history, not evaluated
 
         test_losses[j] = losses[t]
 
@@ -136,11 +152,18 @@ def run_single_backtest(
                 for p in tail_levels:
                     cal_forecasts[p][j] = cal_result[p]
             except Exception:
+                n_fallback += 1
                 for p in tail_levels:
                     cal_forecasts[p][j] = base_forecasts_test[p][j]
         else:
             for p in tail_levels:
                 cal_forecasts[p][j] = base_forecasts_test[p][j]
+
+    if n_fallback:
+        warnings.warn(
+            f"{forecaster_name}: calibration failed on {n_fallback} of {T_test} "
+            "test days; the base forecast was used on those days."
+        )
 
     # ── Compute metrics ──
     metrics = {}
@@ -158,6 +181,7 @@ def run_single_backtest(
         "base_fc": base_forecasts_test,
         "metrics": metrics,
         "test_idx": test_idx,
+        "n_fallback": n_fallback,
     }
 
 
@@ -166,12 +190,17 @@ def run_full_experiment(
     asset_name: str = "Asset",
     forecaster_names: list[str] | None = None,
     tail_levels: list[float] | None = None,
-    train_window: int = 750,
-    cal_window: int = 250,
+    train_window: int = 500,
+    cal_window: int = 200,
+    retrain_freq: int = 50,
+    calibrator_names: list[str] | None = None,
     verbose: bool = True,
 ) -> dict:
     """
     Run all (forecaster × calibrator variant) combinations.
+
+    calibrator_names restricts the run to a subset of get_calibrator_variants(),
+    in the order given. None runs every variant.
 
     Returns nested dict:
         results[forecaster_name][calibrator_name] = backtest_result
@@ -182,6 +211,8 @@ def run_full_experiment(
         tail_levels = [0.05, 0.01]
 
     cal_variants = get_calibrator_variants()
+    if calibrator_names is not None:
+        cal_variants = {name: cal_variants[name] for name in calibrator_names}
     results = {}
 
     for fc_name in forecaster_names:
@@ -199,6 +230,7 @@ def run_full_experiment(
                     tail_levels=tail_levels,
                     train_window=train_window,
                     cal_window=cal_window,
+                    retrain_freq=retrain_freq,
                     verbose=verbose,
                 )
                 results[fc_name][cal_name] = bt

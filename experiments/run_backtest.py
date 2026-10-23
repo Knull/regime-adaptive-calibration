@@ -1,27 +1,36 @@
 """
 experiments/run_backtest.py — Multi-asset backtesting experiment.
 
-Uses synthetic assets that mimic the statistical properties of
-SPY, QQQ, IWM, GLD, TLT, BTC-USD. Each asset is generated with
-GARCH + jump-diffusion dynamics calibrated to approximate the
-real asset's behaviour.
+Uses synthetic assets modelled on SPY, QQQ, IWM, GLD, TLT and BTC-USD.
+Each asset is generated with GARCH + jump-diffusion dynamics whose
+parameters are hand-set per ticker in src/data.py (nothing is fitted to
+market data). Writes results/backtest_results.csv (Table 2 of the
+working paper) plus figures.
+
+Each asset's seed is derived from its ticker with CRC32, so runs are
+reproducible. (An earlier version used Python's hash(), which is salted
+per process, so its asset paths could not be reproduced.)
 """
 
-import sys, os
+import sys, os, zlib
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 import numpy as np
 from src.data import generate_synthetic_asset
 from src.backtest import run_full_experiment
-from src.utils import (metrics_to_table, save_metrics_csv,
+from src.utils import (metrics_to_table, save_combined_metrics_csv,
                        plot_var_backtest, plot_crisis_window)
-from config import (RESULTS_DIR, FIGURES_DIR, TAIL_LEVELS,
-                    ASSET_TICKERS, TRAIN_WINDOW, CALIBRATION_WINDOW)
+from config import (RESULTS_DIR, FIGURES_DIR, TAIL_LEVELS, ASSET_TICKERS,
+                    TRAIN_WINDOW, CALIBRATION_WINDOW, RETRAIN_FREQ,
+                    N_ASSET_DAYS, FORECASTERS, BACKTEST_CALIBRATORS)
 
 
-N_DAYS = 5000  # ~20 years of trading days
+N_DAYS = N_ASSET_DAYS  # ~14 years of trading days
 
-FORECASTERS = ["HS", "EWMA", "GARCH-t"]  # keep compute manageable
+
+def asset_seed(ticker: str) -> int:
+    """Stable per-ticker seed (unlike hash(), identical across runs)."""
+    return zlib.crc32(ticker.encode()) % 2**31
 
 
 def identify_crisis_windows(losses: np.ndarray, window: int = 60,
@@ -50,7 +59,7 @@ def main():
         print(f"  ASSET: {ticker}  ({N_DAYS} synthetic days)")
         print(f"{'='*70}")
 
-        asset = generate_synthetic_asset(ticker, n=N_DAYS, seed=hash(ticker) % 2**31)
+        asset = generate_synthetic_asset(ticker, n=N_DAYS, seed=asset_seed(ticker))
         returns = asset["returns"]
 
         results = run_full_experiment(
@@ -60,6 +69,8 @@ def main():
             tail_levels=TAIL_LEVELS,
             train_window=TRAIN_WINDOW,
             cal_window=CALIBRATION_WINDOW,
+            retrain_freq=RETRAIN_FREQ,
+            calibrator_names=BACKTEST_CALIBRATORS,
             verbose=True,
         )
         all_results[ticker] = results
@@ -68,10 +79,6 @@ def main():
         for p in TAIL_LEVELS:
             print(f"\n--- {ticker} | Tail level p = {p} ---")
             print(metrics_to_table(results, p))
-
-        # Save CSV
-        csv_path = os.path.join(RESULTS_DIR, f"backtest_{ticker.replace('-', '_')}.csv")
-        save_metrics_csv(results, TAIL_LEVELS, csv_path)
 
         # Plot VaR backtest for best combination
         losses = -returns
@@ -89,8 +96,8 @@ def main():
                         save_path=os.path.join(FIGURES_DIR, fname),
                     )
 
-        # Crisis-window analysis
-        test_start = TRAIN_WINDOW + CALIBRATION_WINDOW
+        # Crisis-window analysis (on the evaluated test days)
+        test_start = int(results[FORECASTERS[0]]["Uncalibrated"]["test_idx"][0])
         test_losses = losses[test_start:]
         crisis_wins = identify_crisis_windows(test_losses)
         for ci, (ws, we) in enumerate(crisis_wins):
@@ -107,8 +114,11 @@ def main():
                     save_path=os.path.join(FIGURES_DIR, fname),
                 )
 
+    csv_path = os.path.join(RESULTS_DIR, "backtest_results.csv")
+    save_combined_metrics_csv(all_results, "asset", TAIL_LEVELS, csv_path)
+
     print("\n\nAll asset backtests complete.")
-    print(f"Results in {RESULTS_DIR}")
+    print(f"Results saved to {csv_path}")
 
 
 if __name__ == "__main__":

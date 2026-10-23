@@ -173,6 +173,13 @@ def compute_all_metrics(
     regime_labels: np.ndarray | None = None,
 ) -> dict:
     """Compute the full metrics suite and return as a flat dict."""
+    if np.isnan(var_forecasts).any():
+        # A NaN forecast compares False against every loss, so it would be
+        # silently scored as a non-breach and bias every rate downwards.
+        raise ValueError(
+            f"{int(np.isnan(var_forecasts).sum())} VaR forecasts are NaN; "
+            "refusing to score them as non-breaches."
+        )
     metrics = {}
     metrics["exceedance_rate"] = exceedance_rate(losses, var_forecasts)
     metrics["exceedance_deviation"] = exceedance_deviation(losses, var_forecasts, tail_level)
